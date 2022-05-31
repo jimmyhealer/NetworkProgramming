@@ -11,19 +11,14 @@ while True:
     conn, addr = server.accept()
 
     while True:
-        try:
+        # try:
             clientMessage = str(conn.recv(1024), encoding='utf-8')
             if len(clientMessage) == 0:
                 break
             # x, y = map(int, clientMessage.split())
             print('Client message is:', clientMessage)
-
-            serverMessage = f'{eval(clientMessage)}'
-        except Exception as e:
-            print(e)
-            serverMessage = str(e)
-        finally:
-            if len(serverMessage) == 0:
-                conn.close()
-                break
-            conn.sendall(serverMessage.encode())
+            room_size = '2'
+            a = ['hello', 'apple']
+            conn.sendall(room_size.encode())
+            for i in a:
+                conn.sendall(i.encode())
