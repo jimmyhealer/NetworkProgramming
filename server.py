@@ -15,7 +15,6 @@ while True:
             clientMessage = str(conn.recv(1024), encoding='utf-8')
             if len(clientMessage) == 0:
                 break
-            # x, y = map(int, clientMessage.split())
             print('Client message is:', clientMessage)
             room_size = '2'
             a = ['hello', 'apple']
