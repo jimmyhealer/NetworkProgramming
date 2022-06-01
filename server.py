@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
+import datetime
 import socket
 import threading
 import json
+import requests
 HOST = '127.0.0.1'
 PORT = 8080
+AHTHORIZATION = 'CWB-26051DF2-C34C-4D41-9061-D9652E6AEA8F'
+
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # server.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
@@ -112,6 +116,18 @@ def joinChatAPI(user: User, data: dict):
                 SocketSend.sendTo(user, 'chat', message['message'])
             return
     SocketSend.sendTo(user, 'error', 'Chat does not exist')
+
+def weatherAPI(user: User, data: dict):
+    region = data['data']
+    dateStart = datetime.now()
+    dateEnd = dateStart + datetime.timedelta(days=1)
+
+    url = f'https://opendata.cwb.gov.tw/api/v1/rest/datastore/F-D0047-091?Authorization={AHTHORIZATION}' + \
+        f'&format=JSON&locationName={region}&elementName=T' + \
+        f'&timeFrom={dateStart.strftime("%y-%m-%dT00:00:00")}&timeTo={dateEnd.strftime("%y-%m-%dT00:00:00")}'
+    r = requests.get(url, verify=False)
+    result = r.json()
+    print(result)
 
 def HandleClient(user: User):
     while True:
