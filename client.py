@@ -1,40 +1,57 @@
-from http import server
-import select
 import socket
-import struct
-import sys
+import threading
+import json
+import time
 
 HOST = '127.0.0.1'
 PORT = 8080
 clientMessage = 'Hello!'
+
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect((HOST, PORT))
 
-while True:
-  room = input('Enter room number: ')
-  client.sendall(room.encode())
+def HandleServerIn():
+  while True:
+    try:
+      data = client.recv(1024).decode()
+      if len(data) == 0:
+        break
+      data = json.loads(data)
+      client.sendall('ok'.encode())
+      print(data['result'])
+    except Exception as e:
+      continue
 
-  room_size = str(client.recv(1024), encoding='utf-8') # receive the size of the chat record
-  print('Room size: ' + room_size)
-  room_size = int(room_size)
-
-  while room_size != 0:
-    serverMessage = str(client.recv(5), encoding='utf-8')# receive the chat record
-    print('<Server> ' + serverMessage)
-    room_size -= 1
+def HandleServerOut():
+  time.sleep(0.1)
+  option = int(input('1 - Create chatroom\n2 - Join chatroom\n3 - Chat\n4 - Exit\n5 - Weather\n> '))
+  data = ""
+  if option == 1:
+    data = json.dumps({'type': 'createChat', 'data': 'test'})
+  elif option == 2:
+    data = json.dumps({'type': 'joinChat', 'data': 'test'})
+  elif option == 5:
+    where = input('欲查詢台灣縣市: ')
+    data = json.dumps({'type': 'weather', 'data': where})
   
-  # list = [sys.stdin, server]
-  # read, write, error = select.select(list, [], [])
+  client.sendall(data.encode())
+  time.sleep(0.1)
 
-  # for sock in read:
-  #   if sock == server:
-  #     message = str(sock.recv(1024), encoding='utf-8')
-  #     print('server message:' + message)
-  #   else:
-  #     client.sendall(sys.stdin.readline().encode())
-  #     sys.stdout.flush()
+  while True:
+    try:
+      clientMessage = input('')
+      if len(clientMessage) == 0:
+        continue
+      if clientMessage == 'EXIT':
+        break
+      data = json.dumps({'type': 'chat', 'data': clientMessage})
+      client.sendall(data.encode())
+    except Exception as e:
+      print(e)
+      continue
 
-  # clientMessage = input('Sending message:')
-  # client.sendall(clientMessage.encode())
+name = input('Your name: ')
+client.send(name.encode())
 
-client.close()
+threading.Thread(target=HandleServerIn).start()
+threading.Thread(target=HandleServerOut).start()
