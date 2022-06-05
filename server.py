@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import datetime
+import os
 import socket
 import threading
 import json
@@ -32,10 +33,14 @@ class SocketSend:
     @staticmethod
     def sendTo(user, type: str, message: str):
         while True:
-            data = json.dumps({'type': type, 'result': message})
-            user.getConn().sendall(data.encode())
-            res = SocketSend.getData(user)
-            if res == 'ok':
+            try:
+                data = json.dumps({'type': type, 'result': message})
+                user.getConn().sendall(data.encode())
+                res = SocketSend.getData(user)
+                if res == 'ok':
+                    break
+            except Exception as e:
+                print(e)
                 break
 
     @staticmethod
@@ -83,6 +88,10 @@ class Chatroom:
         SocketSend.broadcast(user, str(user) + " has joined the chatroom.", False)
         self.users.append(user)
 
+    def removeUser(self, user):
+        SocketSend.broadcast(user, str(user) + " has left the chatroom.", False)
+        self.users.remove(user)
+
     def addMessage(self, user, message):
         self.messages.append({"user": user, "message": message})
 
@@ -97,13 +106,14 @@ def chatAPI(user: User, data: dict):
     SocketSend.broadcast(user, f'{user}> {data["data"]}')
 
 def createChatAPI(user: User, data: dict):
-    if data['data'] in chatrooms:
-        SocketSend.sendTo(user, 'error', 'Chat already exists')
-    else:
-        chatrooms.append(Chatroom(data['data'], user))
-        # print(user, 'created chatroom', data['data'])
-        SocketSend.sendTo(user, 'info', f'-------{data["data"]}--------')
-        SocketSend.sendTo(user, 'createChat', 'Chat created')
+    for chatroom in chatrooms:
+        if str(chatroom) == data['data']:
+            SocketSend.sendTo(user, 'error', 'Chat already exists')
+            return
+    chatrooms.append(Chatroom(data['data'], user))
+    # print(user, 'created chatroom', data['data'])
+    SocketSend.sendTo(user, 'info', f'-------{data["data"]}--------')
+    SocketSend.sendTo(user, 'createChat', 'Chat created')
 
 def joinChatAPI(user: User, data: dict):
     for chatroom in chatrooms:
@@ -118,16 +128,20 @@ def joinChatAPI(user: User, data: dict):
     SocketSend.sendTo(user, 'error', 'Chat does not exist')
 
 def weatherAPI(user: User, data: dict):
-    region = data['data']
-    dateStart = datetime.now()
+    city = data['data']
+    dateStart = datetime.datetime.now()
     dateEnd = dateStart + datetime.timedelta(days=1)
 
     url = f'https://opendata.cwb.gov.tw/api/v1/rest/datastore/F-D0047-091?Authorization={AHTHORIZATION}' + \
-        f'&format=JSON&locationName={region}&elementName=T' + \
+        f'&format=JSON&locationName={city}&elementName=T' + \
         f'&timeFrom={dateStart.strftime("%y-%m-%dT00:00:00")}&timeTo={dateEnd.strftime("%y-%m-%dT00:00:00")}'
-    r = requests.get(url, verify=False)
+    r = requests.get(url, verify=os.path.abspath('certs.pem'))
     result = r.json()
-    print(result)
+    # print(result)
+    if result['success'] == 'true':
+        SocketSend.sendTo(user, 'weather', f"Now {result['records']['locations'][0]['location'][0]['weatherElement'][0]['time'][0]['elementValue'][0]['value']}°C")
+    else:
+        SocketSend.sendTo(user, 'weather', 'No result')
 
 def HandleClient(user: User):
     while True:
@@ -135,6 +149,8 @@ def HandleClient(user: User):
             data = SocketSend.getData(user)
             if len(data) == 0:
                 return
+            if data == 'ok':
+                continue
             data = json.loads(data)
             type = data['type']
             # print(data)
@@ -143,11 +159,19 @@ def HandleClient(user: User):
             elif type == 'joinChat':
                 joinChatAPI(user, data)
             elif type == 'chat':
+                if data['data'] == ':q':
+                    SocketSend.sendTo(user, 'info', 'Goodbye')
+                    user.getRoom().removeUser(user)
+                    user.setRoom(None)
+                    continue
                 chatAPI(user, data)
+            elif type == 'weather':
+                weatherAPI(user, data)
             else:
                 SocketSend.sendTo(user, 'error', f'your no any message or error type')
+                continue
         except Exception as e:
-            SocketSend.sendTo(user, 'error', f'your have some errors ({e}).')
+            SocketSend.sendTo(user, 'error', f'your have some errors ({e.args}).')
             continue
 
 print('Server is running...')
