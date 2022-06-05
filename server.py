@@ -153,8 +153,8 @@ def weatherAPI(user: User, data: dict):
               f'{temperature}: {temperature_value}{temperature_measures}\n' + \
               f'{Humidity}: {Humidity_value}{Humidity_measures}\n' + \
               f'{phenomenon}: {phenomenon_value}\n' + \
-              f'{comport}: {comport_number}-{comport_value}\n' + \
-              f'{UVI}: {UVI_value}-{UVI_measures}\n' + \
+              f'{comport}: {comport_number}{comport_value}\n' + \
+              f'{UVI}: {UVI_value} {UVI_measures}\n' + \
               f'{WD}: {WD_value}'
     SocketSend.sendTo(user, 'weather', weather)
 
