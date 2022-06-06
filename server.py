@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import datetime
+import time
 import os
 import socket
 import threading
@@ -32,7 +33,10 @@ class SocketSend:
 
     @staticmethod
     def sendTo(user, type: str, message: str):
+        errorTimes = 0
         while True:
+            errorTimes += 1
+            if errorTimes > 5: break
             try:
                 data = json.dumps({'type': type, 'result': message})
                 user.getConn().sendall(data.encode())
@@ -86,11 +90,11 @@ class Chatroom:
 
     def addUser(self, user):
         SocketSend.broadcast(user, str(user) + " has joined the chatroom.", False)
-        self.users.append(user)
+        if not user in self.users: self.users.append(user)
 
     def removeUser(self, user):
         SocketSend.broadcast(user, str(user) + " has left the chatroom.", False)
-        self.users.remove(user)
+        if user in self.users: self.users.remove(user)
 
     def addMessage(self, user, message):
         self.messages.append({"user": user, "message": message})
@@ -118,6 +122,7 @@ def createChatAPI(user: User, data: dict):
 def joinChatAPI(user: User, data: dict):
     for chatroom in chatrooms:
         if str(chatroom) == data['data']:
+            time.sleep(0.1)
             user.setRoom(chatroom)
             chatroom.addUser(user)
             SocketSend.sendTo(user, 'joinChat', 'Chat joined')
@@ -153,16 +158,19 @@ def HandleClient(user: User):
                 continue
             data = json.loads(data)
             type = data['type']
-            # print(data)
+            print(data)
             if type == 'createChat':
                 createChatAPI(user, data)
             elif type == 'joinChat':
                 joinChatAPI(user, data)
             elif type == 'chat':
                 if data['data'] == ':q':
-                    SocketSend.sendTo(user, 'info', 'Goodbye')
+                    print('user ', user, ' quit')
                     user.getRoom().removeUser(user)
-                    user.setRoom(None)
+                    print('user ', user, ' quit2')
+                    user.setRoom(Chatroom)
+                    print('user ', user, ' quit success')
+                    SocketSend.sendTo(user, 'info', 'Goodbye')
                     continue
                 chatAPI(user, data)
             elif type == 'weather':

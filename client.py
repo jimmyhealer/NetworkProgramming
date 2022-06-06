@@ -62,7 +62,6 @@ print(result['result'])
 result = handleServerIn()
 print(result['result'])
 
-
 while True:
   while not isChat:
     time.sleep(0.1)
@@ -83,7 +82,6 @@ while True:
         exit()
       client.sendall(data.encode())
       result = handleServerIn()
-      # print('Resceive option result')
       if result['type'] == 'error':
         print(result['result'])
       elif option == 1 or option == 2:
