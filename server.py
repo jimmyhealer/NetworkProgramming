@@ -133,15 +133,40 @@ def weatherAPI(user: User, data: dict):
     dateEnd = dateStart + datetime.timedelta(days=1)
 
     url = f'https://opendata.cwb.gov.tw/api/v1/rest/datastore/F-D0047-091?Authorization={AHTHORIZATION}' + \
-        f'&format=JSON&locationName={city}&elementName=T' + \
+        f'&format=JSON&locationName={city}' + \
         f'&timeFrom={dateStart.strftime("%y-%m-%dT00:00:00")}&timeTo={dateEnd.strftime("%y-%m-%dT00:00:00")}'
-    r = requests.get(url, verify=os.path.abspath('certs.pem'))
+    r = requests.get(url, verify=False)
     result = r.json()
-    # print(result)
-    if result['success'] == 'true':
-        SocketSend.sendTo(user, 'weather', f"Now {result['records']['locations'][0]['location'][0]['weatherElement'][0]['time'][0]['elementValue'][0]['value']}°C")
-    else:
-        SocketSend.sendTo(user, 'weather', 'No result')
+    weatherElement = result['records']['locations'][0]['location'][0]['weatherElement']
+    rain = weatherElement[0]['description']
+    rain_value = weatherElement[0]['time'][0]['elementValue'][0]['value']
+    rain_measures = weatherElement[0]['time'][0]['elementValue'][0]['measures']
+    temperature = weatherElement[1]['description']
+    temperature_value = weatherElement[1]['time'][0]['elementValue'][0]['value']
+    temperature_measures = weatherElement[1]['time'][0]['elementValue'][0]['measures']
+    Humidity = weatherElement[2]['description']
+    Humidity_value = weatherElement[2]['time'][0]['elementValue'][0]['value']
+    Humidity_measures = weatherElement[2]['time'][0]['elementValue'][0]['measures']
+    phenomenon = weatherElement[6]['description']
+    phenomenon_value = weatherElement[6]['time'][0]['elementValue'][0]['value']
+    comport = weatherElement[7]['description']
+    comport_number = weatherElement[7]['time'][0]['elementValue'][0]['measures']
+    comport_value = weatherElement[7]['time'][0]['elementValue'][1]['value']
+    UVI = weatherElement[9]['description']
+    UVI_value = weatherElement[9]['time'][0]['elementValue'][0]['value']
+    UVI_measures = weatherElement[9]['time'][0]['elementValue'][1]['value']
+    WD = weatherElement[10]['description']
+    WD_value = weatherElement[10]['time'][0]['elementValue'][0]['value']
+    
+    weather = f'\n<{city}>\n' + \
+              f'{rain}: {rain_value}{rain_measures}\n' + \
+              f'{temperature}: {temperature_value}{temperature_measures}\n' + \
+              f'{Humidity}: {Humidity_value}{Humidity_measures}\n' + \
+              f'{phenomenon}: {phenomenon_value}\n' + \
+              f'{comport}: {comport_number}{comport_value}\n' + \
+              f'{UVI}: {UVI_value} {UVI_measures}\n' + \
+              f'{WD}: {WD_value}'
+    SocketSend.sendTo(user, 'weather', weather)
 
 def HandleClient(user: User):
     while True:
