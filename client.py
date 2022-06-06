@@ -75,7 +75,12 @@ while True:
         roomName = input('Room name: ')
         data = json.dumps({'type': 'joinChat', 'data': roomName})
       elif option == 3:
-        city = input('City: ')
+        while True:
+          city = input('City: ')
+          if len(city) == 0 or not city:
+            print('Please enter a city')
+            continue
+          break
         data = json.dumps({'type': 'weather', 'data': city})
       elif option == 4:
         print('Goodbye!')
