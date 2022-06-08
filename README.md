@@ -22,3 +22,5 @@ You can chat with friends in the chatroom or query weather data on the Central W
 language use **Python3**
 
 data transfer use **socket**
+
+Author: [Jimmyhealer](https://github.com/jimmyhealer), [Rager](https://github.com/Rager0321)
