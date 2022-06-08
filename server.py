@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import datetime
+import time
 import os
 import socket
 import threading
@@ -32,7 +33,10 @@ class SocketSend:
 
     @staticmethod
     def sendTo(user, type: str, message: str):
+        errorTimes = 0
         while True:
+            errorTimes += 1
+            if errorTimes > 5: break
             try:
                 data = json.dumps({'type': type, 'result': message})
                 user.getConn().sendall(data.encode())
@@ -86,11 +90,11 @@ class Chatroom:
 
     def addUser(self, user):
         SocketSend.broadcast(user, str(user) + " has joined the chatroom.", False)
-        self.users.append(user)
+        if not user in self.users: self.users.append(user)
 
     def removeUser(self, user):
         SocketSend.broadcast(user, str(user) + " has left the chatroom.", False)
-        self.users.remove(user)
+        if user in self.users: self.users.remove(user)
 
     def addMessage(self, user, message):
         self.messages.append({"user": user, "message": message})
@@ -118,6 +122,7 @@ def createChatAPI(user: User, data: dict):
 def joinChatAPI(user: User, data: dict):
     for chatroom in chatrooms:
         if str(chatroom) == data['data']:
+            time.sleep(0.1)
             user.setRoom(chatroom)
             chatroom.addUser(user)
             SocketSend.sendTo(user, 'joinChat', 'Chat joined')
@@ -135,8 +140,12 @@ def weatherAPI(user: User, data: dict):
     url = f'https://opendata.cwb.gov.tw/api/v1/rest/datastore/F-D0047-091?Authorization={AHTHORIZATION}' + \
         f'&format=JSON&locationName={city}' + \
         f'&timeFrom={dateStart.strftime("%y-%m-%dT00:00:00")}&timeTo={dateEnd.strftime("%y-%m-%dT00:00:00")}'
-    r = requests.get(url, verify=False)
+    r = requests.get(url, verify=os.path.abspath('certs.pem'))
     result = r.json()
+    localtion = result['records']['locations'][0]['location']
+    if result['success'] == 'false' or localtion == []:
+        SocketSend.sendTo(user, 'error', 'City does not exist')
+        return
     weatherElement = result['records']['locations'][0]['location'][0]['weatherElement']
     rain = weatherElement[0]['description']
     rain_value = weatherElement[0]['time'][0]['elementValue'][0]['value']
@@ -159,11 +168,11 @@ def weatherAPI(user: User, data: dict):
     WD_value = weatherElement[10]['time'][0]['elementValue'][0]['value']
     
     weather = f'\n<{city}>\n' + \
-              f'{rain}: {rain_value}{rain_measures}\n' + \
-              f'{temperature}: {temperature_value}{temperature_measures}\n' + \
-              f'{Humidity}: {Humidity_value}{Humidity_measures}\n' + \
+              f'{rain}: {rain_value} {rain_measures}\n' + \
+              f'{temperature}: {temperature_value} {temperature_measures}\n' + \
+              f'{Humidity}: {Humidity_value} {Humidity_measures}\n' + \
               f'{phenomenon}: {phenomenon_value}\n' + \
-              f'{comport}: {comport_number}{comport_value}\n' + \
+              f'{comport}: {comport_number} {comport_value}\n' + \
               f'{UVI}: {UVI_value} {UVI_measures}\n' + \
               f'{WD}: {WD_value}'
     SocketSend.sendTo(user, 'weather', weather)
@@ -178,16 +187,18 @@ def HandleClient(user: User):
                 continue
             data = json.loads(data)
             type = data['type']
-            # print(data)
             if type == 'createChat':
                 createChatAPI(user, data)
             elif type == 'joinChat':
                 joinChatAPI(user, data)
             elif type == 'chat':
                 if data['data'] == ':q':
-                    SocketSend.sendTo(user, 'info', 'Goodbye')
+                    print('user ', user, ' quit')
                     user.getRoom().removeUser(user)
-                    user.setRoom(None)
+                    print('user ', user, ' quit2')
+                    user.setRoom(Chatroom)
+                    print('user ', user, ' quit success')
+                    SocketSend.sendTo(user, 'info', 'Goodbye')
                     continue
                 chatAPI(user, data)
             elif type == 'weather':

@@ -62,7 +62,6 @@ print(result['result'])
 result = handleServerIn()
 print(result['result'])
 
-
 while True:
   while not isChat:
     time.sleep(0.1)
@@ -76,14 +75,18 @@ while True:
         roomName = input('Room name: ')
         data = json.dumps({'type': 'joinChat', 'data': roomName})
       elif option == 3:
-        city = input('City: ')
+        while True:
+          city = input('City: ')
+          if len(city) == 0 or not city:
+            print('Please enter a city')
+            continue
+          break
         data = json.dumps({'type': 'weather', 'data': city})
       elif option == 4:
         print('Goodbye!')
         exit()
       client.sendall(data.encode())
       result = handleServerIn()
-      # print('Resceive option result')
       if result['type'] == 'error':
         print(result['result'])
       elif option == 1 or option == 2:
